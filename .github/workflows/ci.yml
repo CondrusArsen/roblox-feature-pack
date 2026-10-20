@@ -38,7 +38,7 @@ jobs:
         run: selene src
 
       - name: Rojo build
-        run: rojo build default.project.json --output build/code.rbxl
+        run: mkdir -p build && rojo build default.project.json --output build/code.rbxl
 
       - name: Luau type check (strict)
         run: |
