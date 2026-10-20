@@ -2,6 +2,8 @@
 
 A Roblox fundamentals test assignment: four small gameplay tasks (pressure plate, GUI clicker with saves, kill parts and checkpoints, tweening), refactored into a Rojo project with server-authoritative logic, strict Luau, unit tests and CI.
 
+**Original hand-written submission (Sep 2025):** [tag `original-2025`](https://github.com/CondrusArsen/roblox-feature-pack/tree/original-2025) — the Luau I wrote by hand in Roblox Studio, before the AI-assisted refactor below.
+
 ![Overview of the four tasks](media/overview.jpg)
 
 **Stack:** Luau (`--!strict`), Rojo, Roblox Studio, Selene, StyLua, Lune (tests and build script), luau-lsp (type check), GitHub Actions.
