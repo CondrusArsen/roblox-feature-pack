@@ -90,7 +90,7 @@ luau-lsp analyze --sourcemap=sourcemap.json --definitions=globalTypes.d.luau src
 
 ## AI-assisted workflow
 
-I used an AI coding assistant for this refactor (Rojo layout, review of exploit paths, tests and CI) and reviewed every change; the gameplay rules follow the original assignment.
+The original assignment was scripted by hand in Roblox Studio. This refactor (Rojo layout, exploit fixes, tests and CI) was done with an AI coding assistant under my direction; the gameplay rules follow the original assignment.
 
 ## Next steps
 
