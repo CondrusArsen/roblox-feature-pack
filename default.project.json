@@ -1,0 +1,29 @@
+{
+  "name": "roblox-feature-pack",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "ClickRequest": {
+          "$className": "RemoteEvent"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}

@@ -1,92 +1,99 @@
-# Roblox Feature Pack (Test Assignment)
+# Roblox Feature Pack
 
-A set of gameplay mechanics implemented in Roblox Studio (Lua) as part of a test assignment.
+A Roblox fundamentals test assignment: four small gameplay tasks (pressure plate, GUI clicker with saves, kill parts and checkpoints, tweening), refactored into a Rojo project with server-authoritative logic, strict Luau, unit tests and CI.
 
----
+![Overview of the four tasks](media/overview.jpg)
 
-## Review Without Studio
+**Stack:** Luau (`--!strict`), Rojo, Roblox Studio, Selene, StyLua, Lune (tests and build script), luau-lsp (type check), GitHub Actions.
 
-The original place file is [Testovoe.rbxl](Testovoe.rbxl). Its 8 embedded scripts have also been extracted into [src/](src/) without altering the place. The [manifest](src/manifest.json) records the original instance paths and enabled/disabled states. Open the `.rbxl` file in Roblox Studio to play; the extracted files are for reading and are not a standalone game.
+## What the assignment asked and what was built
 
-## How to Review the Project
-- The scripts for each task are placed in separate folders or services.
-- The final versions are enabled by default and combine all required points.
-- If needed, you can enable separate variants as well, for example `Zadanie1.1` or `Zadanie3.1-3.2`, and they also work correctly.
+The recordings below show the original submission. The code has since been refactored (see [Architecture and security](#architecture-and-security)) and has not been re-recorded yet.
 
----
+### Task 1: pressure plate
 
-## Task 1 - Counter and Teleports
-**Requirements:**
-1. The counter increases only the first time a player steps on the tile.
-2. If the player stays on the platform for 2 seconds, they are teleported to `SpawnLocation`.
-3. Every 5th teleport is replaced with the player's death.
+**Asked:** count a player's step onto the plate once per visit (not while walking on it); after 2 seconds on the plate, teleport the player to `SpawnLocation`; every 5th teleport kills the player instead.
 
-**Implementation:**
-- Scripts `Zadanie1.1`, `Zadanie1.2`, and the final `Zadanie1.3` are located in *ServerScriptService*.
-- `Zadanie1.3` is enabled by default.
-- To avoid `Touched/TouchEnded` bugs where each body part fires a separate event, a more reliable counter-and-flags approach was used.
+**Built:** [`Task1_PressurePlate.server.luau`](src/server/Task1_PressurePlate.server.luau) polls each character's root position in the plate's object space ten times per second instead of relying on `Touched`/`TouchEnded`, which fire per body part and flicker while walking. The rules (enter, stand timer, every 5th trigger) live in a pure module, [`PressurePlate.luau`](src/shared/PressurePlate.luau), covered by unit tests. Each player's count is a player attribute, and [`Task1_PlateLabel.client.luau`](src/client/Task1_PlateLabel.client.luau) shows the local player's own number on the sign.
 
-![Task 1](./Task1.gif)
+![Task 1](media/task1-pressure-plate.gif)
 
----
+### Task 2: GUI clicker with saves
 
-## Task 2 - GUI + Saves
-**Requirements:**
-1. The GUI should look at least minimally polished.
-2. Every 20th click kills the player, and the logic must run on the server.
-3. The counter should be saved and restored when the player rejoins.
+**Asked:** a minimally polished GUI button; every 20th click kills the player, with the logic on the server; the count persists between sessions.
 
-**Implementation:**
-- The local script `Zadanie2` is located in *StarterPlayerScripts*.
-- `RemoteEvent` in *ReplicatedStorage* is used for client-server communication.
-- The server logic (`Zadanie2`) is in *ServerScriptService*: it receives events, processes them, and saves / loads clicks through DataStore.
-- The score counting on the client side is left as in the original template, but the README notes that doing it on the server would be more correct.
+**Built:** the client ([`Task2_ClickGui.client.luau`](src/client/Task2_ClickGui.client.luau)) only fires `ClickRequest` with no payload. The server ([`Task2_ClickCounter.server.luau`](src/server/Task2_ClickCounter.server.luau)) rate-limits requests per player, ignores dead players, increments the count, kills on every 20th click, and replicates the value through a player attribute. Data is loaded with retries and saved with `UpdateAsync` on leave, every 60 seconds and in `BindToClose`.
 
-![Task 2](./Task2.gif)
+![Task 2](media/task2-gui-clicker.gif)
 
----
+### Task 3: kill parts and checkpoints
 
-## Task 3 - KillBlock + Checkpoints
-**Requirements:**
-1. The red platform kills the player.
-2. The white platforms work as checkpoints.
-3. When a new checkpoint is activated, the previous one disappears; when all are gone, they appear again.
+**Asked:** the red floor kills on touch; white platforms are checkpoints; activating a new checkpoint hides the previous one, and when they are all gone they reappear.
 
-**Implementation:**
-- All scripts are placed in the *Zadanie3* folder.
-- A simple version (`Zadanie 3.1-3.2`) exists separately but is disabled.
-- The full version, `Zadanie 3 (polnostyu)`, is implemented using **checkpoint tags**.
+**Built:** [`Task3_Checkpoints.server.luau`](src/server/Task3_Checkpoints.server.luau) uses CollectionService tags (`killparts`, `checkpoints`) already present in the map. Checkpoint progress is per player: the server keeps each player's state, respawns them at their last checkpoint and refuses touches on checkpoints that are hidden for them. [`Task3_CheckpointVisibility.client.luau`](src/client/Task3_CheckpointVisibility.client.luau) hides the used checkpoints only for that player, so two players can be at different stages.
 
-![Task 3](./Task3.gif)
+![Task 3](media/task3-checkpoints.gif)
 
----
+### Task 4: tweening and rotation
 
-## Task 4 - Tweening and Object Animation
-**Requirements:**
-1. The `mover` object must move between `pos1` and `pos2`.
-2. The `spiner` object rotates around the vertical axis.
+**Asked:** `mover` travels between `pos1` and `pos2`; `spiner` rotates around its vertical axis.
 
-**Implementation:**
-- Script `Zadanie4` is stored in the *Zadanie4* folder.
-- Movement is implemented through TweenService.
-- Rotation is implemented with `PivotTo` and coroutines.
+**Built:** [`Task4_Motion.server.luau`](src/server/Task4_Motion.server.luau) plays one reversing, endlessly repeating tween for the mover and rotates the spinner around the vertical axis through its pivot on `Heartbeat`, scaled by delta time so the speed does not depend on frame rate.
 
-![Task 4](./Task4.gif)
+![Task 4](media/task4-tween-spin.gif)
 
----
+## Architecture and security
 
-## Scope and Known Limitations
+```
+src/
+  shared/   ReplicatedStorage.Shared   Config + pure rule modules (no Roblox APIs, unit-tested)
+  server/   ServerScriptService.Server one Script per task
+  client/   StarterPlayerScripts.Client presentation only: labels, GUI, local visibility
+tests/      Lune unit tests for src/shared
+scripts/    build-place.luau: map + code -> build/FeaturePack.rbxl
+```
 
-This repository preserves an earlier test assignment, including the original implementation choices. In Task 2, the client counts clicks and requests death, while the server accepts the submitted counter. This is not a server-authoritative or exploit-resistant click system. The initial GUI can also race the first saved-data response. A future revision should move counting and milestone decisions to the server and synchronize the initial GUI state.
+- **The server owns every decision.** Clients send intent (`ClickRequest` has no arguments) and render state from player attributes. A modified client cannot set its own click count, skip the 20-click rule or fire a kill request directly (the old `KillEvent` and `ClickEvent(count)` remotes are gone).
+- **Rate limiting.** A per-player token bucket (burst 10, 8 clicks per second) caps autoclickers. Values are in [`Config.luau`](src/shared/Config.luau).
+- **No GUI/data race.** The count is a player attribute, so the GUI reads the current value whenever it (re)spawns and shows "loading..." until the server has loaded data.
+- **Safe saves.** `GetAsync`/`UpdateAsync` are wrapped in `pcall` with retries and backoff. If loading fails, the session is not saved, so a DataStore outage cannot reset someone's progress to 0. `UpdateAsync` refuses to overwrite a higher stored value from a stale session. The key format matches the original version, so existing saves still load.
+- **Per-player state everywhere.** Touch counts, teleport counters and checkpoint progress are stored per player and cleaned up on `PlayerRemoving`.
+- **Streaming-aware client code.** The place has streaming enabled, so client scripts use `WaitForChild` and CollectionService signals instead of assuming parts exist.
 
-## Result
-The four assignment areas are represented in the original place and recordings.
-These tasks demonstrate my level of confidence with key Roblox mechanics:
+Not covered on purpose (test-assignment scope): DataStore session locking across servers, and moving the spinner to the client with atomic model streaming to save bandwidth.
 
-- DataStore for saving and loading data
-- checkpoints and kill blocks
-- GUI and RemoteEvents
-- TweenService and Pivot for animations
-- code organization and debugging of non-trivial `Touched/TouchEnded` cases
+## How to run
 
-This is only a small part of what I can build in Roblox Studio, from inventories and NPC logic to more advanced prototypes and learning-oriented gameplay scenarios.
+Tools are pinned in [`rokit.toml`](rokit.toml). With [Rokit](https://github.com/rojo-rbx/rokit) installed:
+
+```sh
+rokit install
+lune run scripts/build-place     # builds build/FeaturePack.rbxl
+rojo serve                       # optional: live sync while editing
+```
+
+1. Open `build/FeaturePack.rbxl` in Roblox Studio and press Play.
+2. For live editing, install the Rojo Studio plugin, run `rojo serve` and click Connect.
+3. Saves in Studio need a published place with **Game Settings > Security > Enable Studio Access to API Services**. Without it the game still runs, and the server logs that clicks will not persist.
+
+`Testovoe.rbxl` is the original place and is used as the map. It still contains the original submission's scripts; the build script removes them so they do not run next to the Rojo code. Map instance names (`zadanie1`, `Zadanie 3`, `Zadanie4`, `Zadanie2`) come from the assignment template and are referenced from `Config.luau`.
+
+Checks (the same as CI):
+
+```sh
+stylua --check src tests scripts
+selene src
+lune run tests/run
+rojo sourcemap default.project.json -o sourcemap.json
+luau-lsp analyze --sourcemap=sourcemap.json --definitions=globalTypes.d.luau src
+```
+
+## AI-assisted workflow
+
+I used an AI coding assistant for this refactor (Rojo layout, review of exploit paths, tests and CI) and reviewed every change; the gameplay rules follow the original assignment.
+
+## Next steps
+
+- Re-record the GIFs from the refactored build and add a two-player test of checkpoints.
+- Move spinner rotation to the client with `ModelStreamingMode = Atomic`.
+- Add session locking (or ProfileStore) if the click counter becomes real progression data.
