@@ -79,8 +79,6 @@ The original place file is [Testovoe.rbxl](Testovoe.rbxl). Its 8 embedded script
 
 This repository preserves an earlier test assignment, including the original implementation choices. In Task 2, the client counts clicks and requests death, while the server accepts the submitted counter. This is not a server-authoritative or exploit-resistant click system. The initial GUI can also race the first saved-data response. A future revision should move counting and milestone decisions to the server and synchronize the initial GUI state.
 
-The GIFs show recorded gameplay; a fresh Studio multiplayer/DataStore playtest was not performed in the 19 October 2026 repository audit.
-
 ## Result
 The four assignment areas are represented in the original place and recordings.
 These tasks demonstrate my level of confidence with key Roblox mechanics:
